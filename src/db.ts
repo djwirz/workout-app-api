@@ -5,9 +5,6 @@ import path from "path";
 const dbPath = path.resolve(__dirname, "../workout.db");
 let dbInstance: Database | null = null;
 
-/**
- * Initializes the SQLite database and ensures all tables exist before API starts.
- */
 async function initializeDatabase() {
   if (dbInstance) return dbInstance;
 
@@ -18,31 +15,28 @@ async function initializeDatabase() {
 
   console.log("🔧 Checking database schema...");
 
-  // Ensure exercises table exists
   await dbInstance.exec(`
     CREATE TABLE IF NOT EXISTS exercises (
       id TEXT PRIMARY KEY,
       name TEXT,
       "group" TEXT,
-      video BLOB,
+      video_path TEXT,
       video_size INTEGER,
       last_updated INTEGER
     );
-    CREATE INDEX IF NOT EXISTS idx_exercise_id ON exercises(id);
+    CREATE INDEX IF NOT EXISTS idx_exercise_last_updated ON exercises(last_updated);
   `);
 
-  // Ensure workouts table exists
   await dbInstance.exec(`
     CREATE TABLE IF NOT EXISTS workouts (
       id TEXT PRIMARY KEY,
       name TEXT,
-      date TEXT,  -- YYYY-MM-DD format
+      date TEXT,
       last_updated INTEGER
     );
-    CREATE INDEX IF NOT EXISTS idx_workout_id ON workouts(id);
+    CREATE INDEX IF NOT EXISTS idx_workout_last_updated ON workouts(last_updated);
   `);
 
-  // Ensure workout_entries table exists
   await dbInstance.exec(`
     CREATE TABLE IF NOT EXISTS workout_entries (
       id TEXT PRIMARY KEY,
@@ -54,7 +48,14 @@ async function initializeDatabase() {
       rest_time INTEGER,
       last_updated INTEGER
     );
-    CREATE INDEX IF NOT EXISTS idx_workout_entry_id ON workout_entries(id);
+    CREATE INDEX IF NOT EXISTS idx_workout_entry_last_updated ON workout_entries(last_updated);
+  `);
+
+  await dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS sync_state (
+      entity TEXT PRIMARY KEY,
+      last_synced INTEGER
+    );
   `);
 
   console.log("✅ Database schema ready.");
