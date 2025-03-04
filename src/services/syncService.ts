@@ -3,12 +3,12 @@ import { fetchExercisesFromNotion } from "./notionService";
 import axios from "axios";
 
 /**
- * Ensures all required tables exist and updates schema if needed.
+ * Ensures the database schema is initialized.
  */
 async function ensureDatabaseSchema() {
   const db = await getDBConnection();
 
-  // Create exercises table if it doesn't exist
+  // Create the exercises table if it does not exist
   await db.exec(`
     CREATE TABLE IF NOT EXISTS exercises (
       id TEXT PRIMARY KEY,
@@ -19,7 +19,7 @@ async function ensureDatabaseSchema() {
     );
   `);
 
-  // Ensure exercises table has 'video' column (for schema updates)
+  // Ensure exercises table has 'video' column
   const columns = await db.all(`PRAGMA table_info(exercises)`);
   const hasVideoColumn = columns.some((col) => col.name === "video");
 
@@ -27,8 +27,6 @@ async function ensureDatabaseSchema() {
     console.log("Updating database schema: Adding 'video' column...");
     await db.exec(`ALTER TABLE exercises ADD COLUMN video BLOB`);
   }
-
-  // (Future tables can be added here)
 }
 
 /**
@@ -48,9 +46,9 @@ async function downloadVideo(url: string): Promise<Buffer | null> {
  * Fetches exercise data from Notion and stores it in SQLite.
  */
 export async function fetchAndStoreExercises() {
-  const db = await getDBConnection();
-  await ensureDatabaseSchema(); // Ensure database schema is initialized
+  await ensureDatabaseSchema(); // Ensure schema before inserting
 
+  const db = await getDBConnection();
   const exercises = await fetchExercisesFromNotion();
   for (const exercise of exercises) {
     const videoBuffer = exercise.video ? await downloadVideo(exercise.video) : null;
