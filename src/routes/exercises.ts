@@ -4,12 +4,22 @@ import { getExercisesFromDB, fetchAndStoreExercises } from "../services/syncServ
 export default async function exercisesRoutes(fastify: FastifyInstance) {
   fastify.get("/exercises", async (request, reply) => {
     let exercises = await getExercisesFromDB();
-    
+
     if (exercises.length === 0) {
       console.log("No exercises found in SQLite, fetching from Notion...");
-      exercises = await fetchAndStoreExercises(); // Pull from Notion & store in SQLite
+      await fetchAndStoreExercises();
+      exercises = await getExercisesFromDB();
     }
-    
-    return reply.send({ exercises });
+
+    // Return metadata (excluding video BLOB)
+    return reply.send({
+      exercises: exercises.map((ex) => ({
+        id: ex.id,
+        name: ex.name,
+        group: ex.group,
+        focus: ex.focus,
+        hasVideo: !!ex.hasVideo, // ✅ Flag for video availability
+      })),
+    });
   });
 }
