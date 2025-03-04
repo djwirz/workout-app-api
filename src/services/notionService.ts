@@ -43,22 +43,42 @@ async function notionRequestWithRetry(url: string, data: any = {}) {
  */
 export const fetchExercisesFromNotion = async () => {
   try {
-    const response = await notionRequestWithRetry(`${NOTION_API_URL}/${NOTION_DATABASE_ID}/query`);
+    console.log("Fetching raw data from Notion API...");
+    
+    const response = await axios.post(
+      `${NOTION_API_URL}/${NOTION_DATABASE_ID}/query`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${NOTION_API_KEY}`,
+          "Notion-Version": "2022-06-28",
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-    return response.results.map((page: any) => {
-      const videoUrl = page.properties.video?.files?.[0]?.external?.url || null;
-      console.log(`Fetched video for ${page.properties.Name.title[0]?.text.content}: ${videoUrl}`);
+    console.log("✅ Full Notion API Response:", JSON.stringify(response.data, null, 2));
+
+    return response.data.results.map((page: any) => {
+      const videoProperty = page.properties.video;
+      let videoUrl = null;
+
+      // Ensure 'video' property exists and has files
+      if (videoProperty?.type === "files" && videoProperty.files.length > 0) {
+        videoUrl = videoProperty.files[0].file.url; // Take the first video file
+      }
 
       return {
         id: page.id,
         name: page.properties.Name.title[0]?.text.content || "Unnamed",
         group: page.properties.group?.select?.name || "Unknown",
         focus: page.properties.focus?.multi_select.map((f: any) => f.name) || [],
-        video: videoUrl,
+        video: videoUrl, // Store extracted video URL
       };
     });
   } catch (error) {
-    console.error("Error fetching exercises from Notion:", error);
+    console.error("❌ Error fetching exercises from Notion:", error);
     return [];
   }
 };
+
