@@ -1,18 +1,10 @@
 import { getDBConnection } from "../db";
 import { fetchExercisesFromNotion } from "./notionService";
 
-export async function syncNotionToLocalDB() {
+export async function fetchAndStoreExercises() {
   const db = await getDBConnection();
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS exercises (
-      id TEXT PRIMARY KEY,
-      name TEXT,
-      "group" TEXT,
-      focus TEXT
-    );
-  `);
-
   const exercises = await fetchExercisesFromNotion();
+
   for (const exercise of exercises) {
     await db.run(
       `INSERT OR REPLACE INTO exercises (id, name, "group", focus)
@@ -21,5 +13,11 @@ export async function syncNotionToLocalDB() {
     );
   }
 
-  console.log("Synced Notion exercises to local SQLite.");
+  console.log("Exercises updated from Notion and stored in SQLite.");
+  return exercises;
+}
+
+export async function getExercisesFromDB() {
+  const db = await getDBConnection();
+  return await db.all(`SELECT id, name, "group", focus FROM exercises`);
 }
