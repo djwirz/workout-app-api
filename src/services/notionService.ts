@@ -21,15 +21,23 @@ export const fetchExercisesFromNotion = async () => {
       }
     );
 
+    console.log("Raw Notion API Response:", JSON.stringify(response.data, null, 2));
+
     return response.data.results.map((page: any) => ({
-      id: page.id,
-      name: page.properties.Name.title[0]?.text.content || "Unnamed",
-      group: page.properties.group?.select?.name || "Unknown",
-      focus: page.properties.focus?.multi_select.map((f: any) => f.name) || [],
-      video: page.properties.video?.files?.[0]?.external?.url || null, // Extract video URL
+      // id: page.id,
+      // name: page.properties.Name.title[0]?.text.content || "Unnamed",
+      // group: page.properties.group?.select?.name || "Unknown",
+      // focus: page.properties.focus?.multi_select.map((f: any) => f.name) || [],
+      video: page.properties.video?.files?.[0]?.external?.url || page.properties.video?.files?.[0]?.file?.url || null, // External or uploaded file
     }));
-  } catch (error) {
-    console.error("Error fetching exercises from Notion:", error);
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error("Error fetching exercises from Notion:", error.message);
+    } else if (axios.isAxiosError(error) && error.response) {
+      console.error("Error fetching exercises from Notion:", error.response.data);
+    } else {
+      console.error("Error fetching exercises from Notion:", error);
+    }
     return [];
   }
 };
