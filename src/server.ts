@@ -4,7 +4,19 @@ import exercisesRoutes from "./routes/exercises";
 import videoRoutes from "./routes/video";
 
 dotenv.config();
-const fastify = Fastify({ logger: { level: "info" } });
+
+// Configure Fastify logging: Only log errors by default
+const fastify = Fastify({
+  logger: {
+    level: "warn", // Reduce unnecessary logging
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        enabled: process.env.NODE_ENV !== "production" // Pretty logs in dev
+      }
+    }
+  },
+});
 
 fastify.register(exercisesRoutes);
 fastify.register(videoRoutes);
@@ -15,5 +27,5 @@ fastify.listen({ port: Number(PORT), host: "0.0.0.0" }, (err, address) => {
     fastify.log.error(err);
     process.exit(1);
   }
-  fastify.log.info(`Server running at ${address}`);
+  console.log(`✅ Server running at ${address}`); // Keep one concise startup log
 });
