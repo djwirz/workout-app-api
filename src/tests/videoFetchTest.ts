@@ -1,27 +1,34 @@
-import { fetchExercisesFromNotion } from "../services/notionService";
+import axios from "axios";
+import dotenv from "dotenv";
 
-async function testFetchVideo() {
-  console.log("Fetching exercises from Notion...");
-  const exercises = await fetchExercisesFromNotion();
+dotenv.config();
 
-  if (exercises.length === 0) {
-    console.error("❌ No exercises found. Check Notion API or database.");
-    return;
+const NOTION_API_URL = "https://api.notion.com/v1/databases";
+const NOTION_DATABASE_ID = process.env.NOTION_EXERCISE_DB_ID;
+const NOTION_API_KEY = process.env.NOTION_API_KEY;
+
+async function testNotionApiResponse() {
+  try {
+    console.log("Fetching raw data from Notion API...");
+
+    const response = await axios.post(
+      `${NOTION_API_URL}/${NOTION_DATABASE_ID}/query`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${NOTION_API_KEY}`,
+          "Notion-Version": "2022-06-28",
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log("✅ Full Notion API Response:");
+    console.dir(response.data, { depth: null });
+
+  } catch (error) {
+    console.error("❌ Error fetching from Notion API:", error);
   }
-
-  const firstExercise = exercises.find((e: { video: any; }) => e.video);
-  
-  if (!firstExercise) {
-    console.error("❌ No exercise with a video found.");
-    return;
-  }
-
-  console.log("✅ First exercise with a video:");
-  console.log(`ID: ${firstExercise.id}`);
-  console.log(`Name: ${firstExercise.name}`);
-  console.log(`Video URL: ${firstExercise.video}`);
-  
-  console.log("🔗 Open this URL in a browser to confirm it's valid.");
 }
 
-testFetchVideo();
+testNotionApiResponse();
