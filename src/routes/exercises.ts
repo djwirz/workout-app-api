@@ -7,12 +7,18 @@ export default async function exercisesRoutes(fastify: FastifyInstance) {
     try {
       console.log("Fetching exercises from SQLite...");
       const db = await getDBConnection();
-      const rows = await db.all("SELECT id, name, group, focus, video IS NOT NULL as hasVideo FROM exercises;");
+      const rows = await db.all(`
+        SELECT id, name, "group" as muscle_group, focus, video IS NOT NULL as hasVideo 
+        FROM exercises;
+      `);
 
       if (rows.length === 0) {
         console.log("No exercises found in SQLite, fetching from Notion...");
         await syncNotionToLocalDB();
-        return reply.send({ exercises: await db.all("SELECT id, name, group, focus, video IS NOT NULL as hasVideo FROM exercises;") });
+        return reply.send({ exercises: await db.all(`
+          SELECT id, name, "group" as muscle_group, focus, video IS NOT NULL as hasVideo 
+          FROM exercises;
+        `)});
       }
 
       console.log(`Returning ${rows.length} exercises from local storage.`);
