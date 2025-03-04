@@ -26,9 +26,11 @@ export const fetchExercisesFromNotion = async () => {
       name: page.properties.Name.title[0]?.text.content || "Unnamed",
       group: page.properties.group?.select?.name || "Unknown",
       focus: page.properties.focus?.multi_select.map((f: any) => f.name) || [],
+      video: page.properties.video?.files?.[0]?.external?.url || null, // Extract video URL
     }));
   } catch (error) {
     console.error("Error fetching exercises from Notion:", error);
     return [];
   }
 };
+
