@@ -3,34 +3,7 @@ import { fetchExercisesFromNotion } from "./notionService";
 import axios from "axios";
 
 /**
- * Ensures the database schema is initialized.
- */
-async function ensureDatabaseSchema() {
-  const db = await getDBConnection();
-
-  // Create the exercises table if it does not exist
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS exercises (
-      id TEXT PRIMARY KEY,
-      name TEXT,
-      "group" TEXT,
-      focus TEXT,
-      video BLOB
-    );
-  `);
-
-  // Ensure exercises table has 'video' column
-  const columns = await db.all(`PRAGMA table_info(exercises)`);
-  const hasVideoColumn = columns.some((col) => col.name === "video");
-
-  if (!hasVideoColumn) {
-    console.log("Updating database schema: Adding 'video' column...");
-    await db.exec(`ALTER TABLE exercises ADD COLUMN video BLOB`);
-  }
-}
-
-/**
- * Downloads a video from the provided URL and returns it as a Buffer.
+ * Downloads a video from a given URL.
  */
 async function downloadVideo(url: string): Promise<Buffer | null> {
   if (!url) {
@@ -59,39 +32,39 @@ async function downloadVideo(url: string): Promise<Buffer | null> {
   }
 }
 
-
-
 /**
- * Fetches exercise data from Notion and stores it in SQLite.
+ * Fetches exercises from Notion and stores them in SQLite.
  */
-export async function fetchAndStoreExercises() {
-  await ensureDatabaseSchema(); // Ensure schema before inserting
-
+export async function syncNotionToLocalDB() {
   const db = await getDBConnection();
+
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS exercises (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      "group" TEXT,
+      focus TEXT,
+      video BLOB
+    );
+  `);
+
   const exercises = await fetchExercisesFromNotion();
+
   for (const exercise of exercises) {
     const videoBuffer = exercise.video ? await downloadVideo(exercise.video) : null;
 
-  if (videoBuffer) {
-    console.log(`Storing video for exercise ${exercise.name} (${videoBuffer.length} bytes)`);
-  } else {
-    console.warn(`No video stored for ${exercise.name}`);
-  }
+    if (videoBuffer) {
+      console.log(`Storing video for exercise ${exercise.id} (${videoBuffer.length} bytes)`);
+    } else {
+      console.warn(`No video stored for exercise ${exercise.id}`);
+    }
 
     await db.run(
       `INSERT OR REPLACE INTO exercises (id, name, "group", focus, video)
-      VALUES (?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?)`,
       [exercise.id, exercise.name, exercise.group, JSON.stringify(exercise.focus), videoBuffer]
     );
   }
 
   console.log("Exercises updated from Notion and stored in SQLite.");
-}
-
-/**
- * Retrieves all exercises from SQLite (excluding video BLOBs).
- */
-export async function getExercisesFromDB() {
-  const db = await getDBConnection();
-  return db.all("SELECT id, name, 'group', focus, video IS NOT NULL as hasVideo FROM exercises");
 }

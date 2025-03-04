@@ -7,15 +7,17 @@ export default async function videoRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const db = await getDBConnection();
 
-      // Retrieve video BLOB from SQLite
+      console.log(`Fetching video for ID: ${id}`);
       const row = await db.get("SELECT video FROM exercises WHERE id = ?", [id]);
 
       if (!row || !row.video) {
+        console.warn(`Video not found for ID: ${id}`);
         return reply.status(404).send({ error: "Video not found" });
       }
 
-      reply.header("Content-Type", "video/mp4"); // ✅ Ensure correct MIME type
-      reply.send(row.video); // ✅ Stream the video BLOB
+      console.log(`Serving video for ${id} (size: ${row.video.length} bytes)`);
+      reply.header("Content-Type", "video/mp4");
+      reply.send(row.video);
     } catch (error) {
       console.error("Error retrieving video:", error);
       reply.status(500).send({ error: "Internal Server Error" });
