@@ -9,7 +9,7 @@ let dbInstance: Database | null = null;
  * Initializes the SQLite database and ensures all tables exist before API starts.
  */
 async function initializeDatabase() {
-  if (dbInstance) return dbInstance; // Prevent reinitialization
+  if (dbInstance) return dbInstance;
 
   dbInstance = await open({
     filename: dbPath,
@@ -27,6 +27,7 @@ async function initializeDatabase() {
       video_size INTEGER,
       last_updated INTEGER
     );
+    CREATE INDEX IF NOT EXISTS idx_exercise_id ON exercises(id);
   `);
 
   console.log("✅ Database schema verified.");

@@ -5,27 +5,29 @@ import { syncNotionToLocalDB } from "../services/syncService";
 export default async function exercisesRoutes(fastify: FastifyInstance) {
   fastify.get("/exercises", async (request, reply) => {
     try {
-      console.log("Fetching exercises from SQLite...");
       const db = await getDBConnection();
+      const { limit = 10, offset = 0 } = request.query as { limit?: number; offset?: number };
+
       const rows = await db.all(`
-        SELECT id, name, "group" as muscle_group, focus, video IS NOT NULL as hasVideo 
-        FROM exercises;
-      `);
+        SELECT id, name, "group" as muscle_group, video IS NOT NULL as hasVideo 
+        FROM exercises
+        LIMIT ? OFFSET ?;
+      `, [limit, offset]);
 
       if (rows.length === 0) {
-        console.log("No exercises found in SQLite, fetching from Notion...");
+        fastify.log.info("No exercises found in SQLite, syncing from Notion...");
         await syncNotionToLocalDB();
         return reply.send({ exercises: await db.all(`
-          SELECT id, name, "group" as muscle_group, focus, video IS NOT NULL as hasVideo 
+          SELECT id, name, "group" as muscle_group, video IS NOT NULL as hasVideo 
           FROM exercises;
         `)});
       }
 
-      console.log(`Returning ${rows.length} exercises from local storage.`);
+      fastify.log.info(`✅ Returning ${rows.length} exercises.`);
       return reply.send({ exercises: rows });
 
     } catch (error) {
-      console.error("Error retrieving exercises:", error);
+      fastify.log.error("❌ Error retrieving exercises:", error);
       reply.status(500).send({ error: "Internal Server Error" });
     }
   });
