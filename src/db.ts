@@ -5,7 +5,7 @@ import path from "path";
 const dbPath = path.resolve(__dirname, "../workout.db");
 
 /**
- * Initializes the SQLite database and ensures all tables exist before API starts.
+ * Initializes the SQLite database with the correct schema.
  */
 async function initializeDatabase() {
   const db = await open({
@@ -13,18 +13,20 @@ async function initializeDatabase() {
     driver: sqlite3.Database,
   });
 
-  console.log("Initializing database...");
+  console.log("📦 Initializing database...");
 
   await db.exec(`
     CREATE TABLE IF NOT EXISTS exercises (
       id TEXT PRIMARY KEY,
       name TEXT,
       "group" TEXT,
-      focus TEXT,
-      video BLOB
+      video BLOB,
+      video_size INTEGER,
+      last_updated INTEGER
     );
   `);
 
+  console.log("✅ Database ready.");
   return db;
 }
 

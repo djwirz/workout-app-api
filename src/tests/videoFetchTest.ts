@@ -9,7 +9,7 @@ dotenv.config();
 async function testVideoStorageAndRetrieval() {
   const db = await getDBConnection();
 
-  console.log("🔍 Checking if exercises exist...");
+  console.log("🔍 Checking exercise data...");
   const exercises = await fetchExercisesFromNotion();
 
   if (exercises.length === 0) {
@@ -21,11 +21,11 @@ async function testVideoStorageAndRetrieval() {
 
   for (const exercise of exercises) {
     if (!exercise.video) {
-      console.warn(`⚠️ No video URL for exercise ${exercise.id}, skipping.`);
+      console.warn(`⚠️ No video URL for ${exercise.id}, skipping.`);
       continue;
     }
 
-    // Check if video exists
+    // Check if video already exists
     const existingVideo = await db.get("SELECT video_size FROM exercises WHERE id = ?", [exercise.id]);
 
     if (existingVideo?.video_size) {
@@ -42,23 +42,23 @@ async function testVideoStorageAndRetrieval() {
     }
 
     await db.run(
-      `INSERT OR REPLACE INTO exercises (id, name, "group", focus, video, video_size)
+      `INSERT OR REPLACE INTO exercises (id, name, "group", video, video_size, last_updated)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
         exercise.id,
         exercise.name,
         exercise.group,
-        JSON.stringify(exercise.focus),
         videoBuffer,
         videoBuffer.length,
+        Date.now(),
       ]
     );
 
-    console.log(`✅ Video stored for ${exercise.id} (${videoBuffer.length} bytes)`);
+    console.log(`✅ Stored video for ${exercise.id} (${videoBuffer.length} bytes)`);
     processedCount++;
   }
 
-  console.log(`✅ Completed processing ${processedCount} videos.`);
+  console.log(`✅ Processed ${processedCount} videos.`);
 
   // Verify API retrieval
   for (const exercise of exercises) {
