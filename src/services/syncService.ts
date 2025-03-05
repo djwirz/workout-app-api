@@ -5,15 +5,15 @@ import axios from "axios";
 // Ensure the exercises table includes a `video` column
 async function ensureExercisesTable() {
   const db = await getDBConnection();
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS exercises (
-      id TEXT PRIMARY KEY,
-      name TEXT,
-      "group" TEXT,
-      focus TEXT,
-      video BLOB
-    );
-  `);
+
+  // Check if the "video" column exists
+  const columns = await db.all(`PRAGMA table_info(exercises)`);
+  const columnExists = columns.some((col) => col.name === "video");
+
+  if (!columnExists) {
+    console.log("Updating database schema: Adding 'video' column...");
+    await db.exec(`ALTER TABLE exercises ADD COLUMN video BLOB`);
+  }
 }
 
 // Download video from S3 and return as a buffer
