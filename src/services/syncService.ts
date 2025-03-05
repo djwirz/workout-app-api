@@ -33,14 +33,33 @@ async function ensureDatabaseSchema() {
  * Downloads a video from the provided URL and returns it as a Buffer.
  */
 async function downloadVideo(url: string): Promise<Buffer | null> {
+  if (!url) {
+    console.warn("Skipping download, no URL provided.");
+    return null;
+  }
+
   try {
+    console.log(`Downloading video from: ${url}`);
     const response = await axios.get(url, { responseType: "arraybuffer" });
+
+    if (response.data.length === 0) {
+      console.error(`Empty video response from ${url}`);
+      return null;
+    }
+
+    console.log(`Successfully downloaded video (${response.data.length} bytes)`);
     return Buffer.from(response.data);
-  } catch (error) {
-    console.error(`Error downloading video from ${url}:`, error);
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error(`Failed to download video from ${url}:`, error.message);
+    } else {
+      console.error(`Failed to download video from ${url}:`, String(error));
+    }
     return null;
   }
 }
+
+
 
 /**
  * Fetches exercise data from Notion and stores it in SQLite.
@@ -52,6 +71,12 @@ export async function fetchAndStoreExercises() {
   const exercises = await fetchExercisesFromNotion();
   for (const exercise of exercises) {
     const videoBuffer = exercise.video ? await downloadVideo(exercise.video) : null;
+
+  if (videoBuffer) {
+    console.log(`Storing video for exercise ${exercise.name} (${videoBuffer.length} bytes)`);
+  } else {
+    console.warn(`No video stored for ${exercise.name}`);
+  }
 
     await db.run(
       `INSERT OR REPLACE INTO exercises (id, name, "group", focus, video)
