@@ -16,21 +16,30 @@ async function initializeDatabase() {
     driver: sqlite3.Database,
   });
 
-  console.log("🔧 Initializing database schema...");
+  console.log("🔧 Checking database schema...");
 
-  await dbInstance.exec(`
-    CREATE TABLE IF NOT EXISTS exercises (
-      id TEXT PRIMARY KEY,
-      name TEXT,
-      "group" TEXT,
-      video BLOB,
-      video_size INTEGER,
-      last_updated INTEGER
-    );
-    CREATE INDEX IF NOT EXISTS idx_exercise_id ON exercises(id);
+  // Ensure exercises table exists
+  const tableCheck = await dbInstance.get(`
+    SELECT name FROM sqlite_master WHERE type='table' AND name='exercises';
   `);
 
-  console.log("✅ Database schema verified.");
+  if (!tableCheck) {
+    console.log("⚠️ No 'exercises' table found, creating schema...");
+    await dbInstance.exec(`
+      CREATE TABLE exercises (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        "group" TEXT,
+        video BLOB,
+        video_size INTEGER,
+        last_updated INTEGER
+      );
+      CREATE INDEX idx_exercise_id ON exercises(id);
+    `);
+  } else {
+    console.log("✅ Database schema already exists.");
+  }
+
   return dbInstance;
 }
 
