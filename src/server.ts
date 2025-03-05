@@ -6,9 +6,15 @@ import videoRoutes from "./routes/video";
 
 dotenv.config();
 
-// Configure Pino logging
+// Correctly configure Pino for Fastify
 const logger = pino({
   level: process.env.LOG_LEVEL || "info",
+  formatters: {
+    level(label) {
+      return { level: label };
+    },
+  },
+  timestamp: pino.stdTimeFunctions.isoTime,
   transport: {
     target: "pino-pretty",
     options: {
@@ -19,27 +25,29 @@ const logger = pino({
   },
 });
 
-const fastify = Fastify({ logger });
+// Correct Fastify logger initialization
+const fastify = Fastify({ logger: true });
 
 fastify.register(exercisesRoutes);
 fastify.register(videoRoutes);
 
 const PORT = process.env.PORT || 3000;
 
+// Logging hooks for incoming requests
 fastify.addHook("onRequest", (request, reply, done) => {
-  request.log.info({ method: request.method, url: request.url }, "📩 Incoming Request");
+  fastify.log.info({ method: request.method, url: request.url }, "📩 Incoming Request");
   done();
 });
 
 fastify.addHook("onResponse", (request, reply, done) => {
-  request.log.info({ method: request.method, url: request.url, status: reply.statusCode }, "✅ Request Completed");
+  fastify.log.info({ method: request.method, url: request.url, status: reply.statusCode }, "✅ Request Completed");
   done();
 });
 
 fastify.listen({ port: Number(PORT), host: "0.0.0.0" }, (err, address) => {
   if (err) {
-    logger.error(err, "❌ Server failed to start");
+    fastify.log.error(err, "❌ Server failed to start");
     process.exit(1);
   }
-  logger.info(`✅ Server running at ${address}`);
+  fastify.log.info(`✅ Server running at ${address}`);
 });
