@@ -2,21 +2,38 @@ import { getDBConnection } from "../db";
 import { fetchExercisesFromNotion } from "./notionService";
 import axios from "axios";
 
-// Ensure the exercises table includes a `video` column
-async function ensureExercisesTable() {
+/**
+ * Ensures all required tables exist and updates schema if needed.
+ */
+async function ensureDatabaseSchema() {
   const db = await getDBConnection();
 
-  // Check if the "video" column exists
-  const columns = await db.all(`PRAGMA table_info(exercises)`);
-  const columnExists = columns.some((col) => col.name === "video");
+  // Create exercises table if it doesn't exist
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS exercises (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      "group" TEXT,
+      focus TEXT,
+      video BLOB
+    );
+  `);
 
-  if (!columnExists) {
+  // Ensure exercises table has 'video' column (for schema updates)
+  const columns = await db.all(`PRAGMA table_info(exercises)`);
+  const hasVideoColumn = columns.some((col) => col.name === "video");
+
+  if (!hasVideoColumn) {
     console.log("Updating database schema: Adding 'video' column...");
     await db.exec(`ALTER TABLE exercises ADD COLUMN video BLOB`);
   }
+
+  // (Future tables can be added here)
 }
 
-// Download video from S3 and return as a buffer
+/**
+ * Downloads a video from the provided URL and returns it as a Buffer.
+ */
 async function downloadVideo(url: string): Promise<Buffer | null> {
   try {
     const response = await axios.get(url, { responseType: "arraybuffer" });
@@ -27,10 +44,12 @@ async function downloadVideo(url: string): Promise<Buffer | null> {
   }
 }
 
-// Fetch exercises from Notion, store in SQLite with videos
+/**
+ * Fetches exercise data from Notion and stores it in SQLite.
+ */
 export async function fetchAndStoreExercises() {
   const db = await getDBConnection();
-  await ensureExercisesTable(); // Ensure schema is correct
+  await ensureDatabaseSchema(); // Ensure database schema is initialized
 
   const exercises = await fetchExercisesFromNotion();
   for (const exercise of exercises) {
@@ -46,7 +65,9 @@ export async function fetchAndStoreExercises() {
   console.log("Exercises updated from Notion and stored in SQLite.");
 }
 
-// Retrieve exercises from SQLite (excluding the video data)
+/**
+ * Retrieves all exercises from SQLite (excluding video BLOBs).
+ */
 export async function getExercisesFromDB() {
   const db = await getDBConnection();
   return db.all("SELECT id, name, 'group', focus, video IS NOT NULL as hasVideo FROM exercises");
