@@ -4,27 +4,30 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const NOTION_API_URL = "https://api.notion.com/v1/databases";
-const NOTION_DATABASE_ID = process.env.NOTION_WORKOUT_ENTRIES_DB_ID;
+const NOTION_DATABASE_ID = process.env.NOTION_WORKOUT_ENTRY_DB_ID;
 const NOTION_API_KEY = process.env.NOTION_API_KEY;
 
 /**
  * Fetches workout entries from Notion, ensuring missing properties are handled.
  */
+/**
+ * Fetches workout entries from Notion.
+ */
 export async function fetchWorkoutEntriesFromNotion() {
-  const response = await axios.post(
-    `${NOTION_API_URL}/${NOTION_DATABASE_ID}/query`,
-    {},
-    {
-      headers: {
-        Authorization: `Bearer ${NOTION_API_KEY}`,
-        "Notion-Version": "2022-06-28",
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  try {
+    const response = await axios.post(
+      `${NOTION_API_URL}/${NOTION_DATABASE_ID}/query`,
+      {}, // Empty object since we are not applying filters
+      {
+        headers: {
+          Authorization: `Bearer ${NOTION_API_KEY}`,
+          "Notion-Version": "2022-06-28",
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-  return response.data.results
-    .map((page: any) => {
+    return response.data.results.map((page: any) => {
       return {
         id: page.id,
         workout_id: page.properties["Workout"]?.relation?.[0]?.id || null,
@@ -39,6 +42,9 @@ export async function fetchWorkoutEntriesFromNotion() {
           ? parseFloat(page.properties["weight"].rich_text[0].text.content)
           : 0,
       };
-    })
-    .filter((entry: { workout_id: any; exercise_id: any; }) => entry.workout_id && entry.exercise_id);
+    });
+  } catch (error: any) {
+    console.error(`❌ Notion API Error: ${error.response?.data?.message || error.message}`);
+    throw error;
+  }
 }
