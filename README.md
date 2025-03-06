@@ -2,91 +2,79 @@
 
 ## Overview
 
-A lightweight Fastify-based API designed to **sync, store, and retrieve workout exercises** from Notion. This API caches exercise videos locally to optimize performance for a Progressive Web App (PWA).
+A Fastify-based API for syncing, storing, and retrieving workout exercises from Notion. Caches exercise videos locally to optimize performance for a Progressive Web App (PWA).
 
 ## Features
 
-✅ **Manually sync exercises** from Notion  
-✅ **Cache exercise videos** in SQLite  
-✅ **Serve video data efficiently**  
-✅ **Paginated exercise retrieval**
+- Manually sync exercises, workouts, and entries from Notion
+- Cache and serve exercise videos from SQLite
+- Retrieve paginated exercise lists
+- Fetch stored workouts and associated entries
 
-## Installation
+## Setup
 
 ### Prerequisites
 
 - Node.js 18+
-- SQLite installed (`brew install sqlite3` or equivalent)
+- SQLite (`brew install sqlite3` or equivalent)
 
-### Setup
+### Installation
 
-1. Clone the repository:
+```sh
+git clone https://github.com/djwirz/workout-app-api.git
+cd workout-app-api
+pnpm install
+```
 
-   ```sh
-   git clone https://github.com/djwirz/workout-app-api.git
-   cd workout-app-api
-   ```
+### Configuration
 
-2. Install dependencies:
+Create a `.env` file with:
 
-   ```sh
-   npm install
-   ```
+```sh
+NOTION_API_KEY=your_notion_api_key
+NOTION_EXERCISE_DB_ID=your_exercise_db_id
+NOTION_WORKOUT_DB_ID=your_workout_db_id
+NOTION_WORKOUT_ENTRY_DB_ID=your_workout_entry_db_id
+PORT=3000
+LOG_LEVEL=info
+```
 
-3. Create a `.env` file:
+### Running the Server
 
-   ```sh
-   NOTION_API_KEY=your_notion_api_key
-   NOTION_EXERCISE_DB_ID=your_notion_database_id
-   PORT=3000
-   LOG_LEVEL=info
-   ```
-
-4. Start the server:
-   ```sh
-   npm run dev
-   ```
+```sh
+pnpm run dev
+```
 
 ## Endpoints
 
-### **1. Get Exercises (Paginated)**
+### **Exercises**
 
-```
-GET /exercises?limit=10&offset=0
-```
+- `GET /exercises?limit=10&offset=0` - Returns stored exercises
+- `POST /sync` - Syncs exercises from Notion
 
-- Returns a paginated list of exercises.
-- Does **not** trigger a Notion sync; it only returns stored data.
+### **Videos**
 
-### **2. Get Exercise Video**
+- `GET /video/:id` - Fetches cached video for an exercise
 
-```
-GET /video/:id
-```
+### **Workouts**
 
-- Returns the **cached video** for the given `id`.
-
-### **3. Sync Exercises from Notion**
-
-```
-POST /sync
-```
-
-- Manually triggers a sync with Notion.
-- Fetches exercises and caches their videos in the database.
-- Should be called **only when new data is needed** to avoid unnecessary API requests.
+- `GET /workouts` - Returns stored workouts
+- `GET /workout/:id` - Retrieves a single workout with entries
+- `POST /sync-workouts` - Syncs workouts from Notion
+- `POST /sync-workout-entries` - Syncs workout entries from Notion
 
 ## Logging
 
-This API uses **Pino logging** for structured output. Logs include:
+Uses Pino for structured logging with request tracking and sync status monitoring.
 
-- Incoming API requests & responses
-- Notion API interactions
-- Exercise and video storage operations
-- Errors & warnings
+## Notes
+
+- Syncing operations are manual to avoid unnecessary API calls.
+- Designed for offline-friendly usage with a PWA integration in mind.
+- No user authentication; intended for personal use.
 
 ## Next Steps
 
-- PWA integration for **offline workouts**
-- Optimized syncing **only for changes** from Notion
-- UI for **managing workout plans**
+- Optimize sync to only fetch changed records
+- Background job support for sync operations
+- UI for managing and editing workouts
