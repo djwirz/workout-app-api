@@ -8,7 +8,7 @@ const NOTION_DATABASE_ID = process.env.NOTION_WORKOUT_DB_ID;
 const NOTION_API_KEY = process.env.NOTION_API_KEY;
 
 /**
- * Fetches workouts from Notion, filtering only "Planned" workouts.
+ * Fetches workouts from Notion, filtering only "Planned" workouts and using "Auto Name".
  */
 export async function fetchWorkoutsFromNotion() {
   const response = await axios.post(
@@ -33,7 +33,7 @@ export async function fetchWorkoutsFromNotion() {
   return response.data.results.map((page: any) => {
     return {
       id: page.id,
-      name: page.properties.Name?.title?.[0]?.text?.content || "Unnamed Workout",
+      name: page.properties["Auto Name"]?.formula?.string || "Unnamed Workout",
       date: page.properties["Workout Date"]?.date?.start || null,
     };
   });
