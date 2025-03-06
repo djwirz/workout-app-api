@@ -7,6 +7,9 @@ const NOTION_API_URL = "https://api.notion.com/v1/databases";
 const NOTION_DATABASE_ID = process.env.NOTION_WORKOUT_ENTRIES_DB_ID;
 const NOTION_API_KEY = process.env.NOTION_API_KEY;
 
+/**
+ * Fetches workout entries from Notion, ensuring missing properties are handled.
+ */
 export async function fetchWorkoutEntriesFromNotion() {
   const response = await axios.post(
     `${NOTION_API_URL}/${NOTION_DATABASE_ID}/query`,
@@ -21,14 +24,21 @@ export async function fetchWorkoutEntriesFromNotion() {
   );
 
   return response.data.results
-    .map((page: any) => ({
-      id: page.id,
-      workout_id: page.properties.Workout.relation[0]?.id,
-      exercise_id: page.properties.Exercise.relation[0]?.id,
-      sets: page.properties.Sets.number,
-      reps: page.properties.Reps.number,
-      weight: page.properties.Weight.number || 0,
-      rest_time: page.properties.Rest.number || 0,
-    }))
-    .filter(Boolean);
+    .map((page: any) => {
+      return {
+        id: page.id,
+        workout_id: page.properties["Workout"]?.relation?.[0]?.id || null,
+        exercise_id: page.properties["Exercises"]?.relation?.[0]?.id || null,
+        sets: page.properties["set"]?.rich_text?.[0]?.text?.content
+          ? parseInt(page.properties["set"].rich_text[0].text.content, 10)
+          : 0,
+        reps: page.properties["reps"]?.rich_text?.[0]?.text?.content
+          ? parseInt(page.properties["reps"].rich_text[0].text.content, 10)
+          : 0,
+        weight: page.properties["weight"]?.rich_text?.[0]?.text?.content
+          ? parseFloat(page.properties["weight"].rich_text[0].text.content)
+          : 0,
+      };
+    })
+    .filter((entry: { workout_id: any; exercise_id: any; }) => entry.workout_id && entry.exercise_id);
 }
