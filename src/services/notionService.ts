@@ -7,40 +7,56 @@ const NOTION_API_URL = "https://api.notion.com/v1/databases";
 const NOTION_DATABASE_ID = process.env.NOTION_EXERCISE_DB_ID;
 const NOTION_API_KEY = process.env.NOTION_API_KEY;
 
-async function notionRequestWithRetry(url: string, body: object = {}, retries = 3) {
-  for (let attempt = 0; attempt < retries; attempt++) {
+/**
+ * Handles Notion API requests with automatic retry logic.
+ */
+async function notionRequestWithRetry(url: string, data: any = {}) {
+  let attempts = 3;
+  while (attempts > 0) {
     try {
-      const response = await axios.post(url, body, {
-        headers: {
-          Authorization: `Bearer ${NOTION_API_KEY}`,
-          "Notion-Version": "2022-06-28",
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await axios.post(
+        url,
+        data,
+        {
+          headers: {
+            Authorization: `Bearer ${NOTION_API_KEY}`,
+            "Notion-Version": "2022-06-28",
+            "Content-Type": "application/json",
+          },
+        }
+      );
       return response.data;
     } catch (error: any) {
-      if (error.response?.status === 429) {
-        const retryAfter = error.response.headers["retry-after"] || 1;
-        console.warn(`Rate limited by Notion, retrying in ${retryAfter} seconds...`);
-        await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
-      } else {
-        console.error("Notion API request failed:", error);
+      if (attempts === 1 || error.response?.status !== 429) {
+        console.error(`Notion API request failed: ${error.message}`);
         throw error;
       }
+      console.warn(`Notion API rate limited, retrying...`);
+      await new Promise((res) => setTimeout(res, 1000)); // Wait 1s before retrying
     }
+    attempts--;
   }
-  throw new Error("Max retries exceeded for Notion API");
 }
 
+/**
+ * Fetches exercises from Notion, extracting relevant properties.
+ */
 export const fetchExercisesFromNotion = async () => {
   try {
     const response = await notionRequestWithRetry(`${NOTION_API_URL}/${NOTION_DATABASE_ID}/query`);
-    return response.results.map((page: any) => ({
-      id: page.id,
-      name: page.properties.Name.title[0]?.text.content || "Unnamed",
-      group: page.properties.group?.select?.name || "Unknown",
-      focus: page.properties.focus?.multi_select.map((f: any) => f.name) || [],
-    }));
+
+    return response.results.map((page: any) => {
+      const videoUrl = page.properties.video?.files?.[0]?.external?.url || null;
+      console.log(`Fetched video for ${page.properties.Name.title[0]?.text.content}: ${videoUrl}`);
+
+      return {
+        id: page.id,
+        name: page.properties.Name.title[0]?.text.content || "Unnamed",
+        group: page.properties.group?.select?.name || "Unknown",
+        focus: page.properties.focus?.multi_select.map((f: any) => f.name) || [],
+        video: videoUrl,
+      };
+    });
   } catch (error) {
     console.error("Error fetching exercises from Notion:", error);
     return [];
