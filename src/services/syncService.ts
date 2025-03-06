@@ -38,6 +38,7 @@ async function downloadVideo(url: string): Promise<Buffer | null> {
 export async function syncNotionToLocalDB() {
   const db = await getDBConnection();
 
+  console.log("Ensuring database schema is correct...");
   await db.exec(`
     CREATE TABLE IF NOT EXISTS exercises (
       id TEXT PRIMARY KEY,
@@ -48,6 +49,8 @@ export async function syncNotionToLocalDB() {
     );
   `);
 
+  console.log("Database schema verified.");
+  
   const exercises = await fetchExercisesFromNotion();
 
   for (const exercise of exercises) {
