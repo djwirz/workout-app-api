@@ -43,7 +43,7 @@ export async function syncNotionToLocalDB() {
     CREATE TABLE IF NOT EXISTS exercises (
       id TEXT PRIMARY KEY,
       name TEXT,
-      "group" TEXT,
+      "group" TEXT, -- Must be escaped
       focus TEXT,
       video BLOB
     );
@@ -71,3 +71,4 @@ export async function syncNotionToLocalDB() {
 
   console.log("Exercises updated from Notion and stored in SQLite.");
 }
+
