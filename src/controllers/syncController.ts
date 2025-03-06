@@ -1,19 +1,15 @@
 import { FastifyInstance } from "fastify";
-import { syncNotionToLocalDB } from "../services/syncService";
-import { getDBConnection } from "../db";
+import { syncExercisesToLocalDB } from "../services/sync/syncExercises";
+import { ExerciseRepository } from "../repositories/ExerciseRepository";
 
 export default async function syncRoutes(fastify: FastifyInstance) {
   fastify.post("/sync", async (request, reply) => {
     try {
-      fastify.log.info("🔄 Syncing new exercises...");
-      await syncNotionToLocalDB();
+      fastify.log.info("🔄 Syncing exercises...");
+      await syncExercisesToLocalDB();
 
-      // Fetch only NEW exercises (ones that didn't exist before)
-      const db = await getDBConnection();
-      const exercises = await db.all(
-        `SELECT id, name, "group" as muscle_group, video IS NOT NULL as hasVideo
-         FROM exercises;`
-      );
+      const repo = new ExerciseRepository();
+      const exercises = await repo.getAllExercises();
 
       return reply.send({ exercises });
     } catch (error) {
