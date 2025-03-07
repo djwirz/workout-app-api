@@ -5,29 +5,25 @@ import axios from "axios";
 /**
  * Downloads a video from a given URL.
  */
-async function downloadVideo(url: string): Promise<Buffer | null> {
+export async function downloadVideo(url: string): Promise<Buffer | null> {
   if (!url) {
-    console.warn("Skipping download, no URL provided.");
+    console.warn("⚠️ Skipping download, no URL provided.");
     return null;
   }
 
   try {
-    console.log(`Downloading video from: ${url}`);
+    console.log(`📥 Downloading video from: ${url}`);
     const response = await axios.get(url, { responseType: "arraybuffer" });
 
     if (response.data.length === 0) {
-      console.error(`Empty video response from ${url}`);
+      console.error(`❌ Empty video response from ${url}`);
       return null;
     }
 
-    console.log(`Successfully downloaded video (${response.data.length} bytes)`);
+    console.log(`✅ Successfully downloaded video (${response.data.length} bytes)`);
     return Buffer.from(response.data);
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      console.error(`Failed to download video from ${url}:`, error.message);
-    } else {
-      console.error(`Failed to download video from ${url}:`, String(error));
-    }
+  } catch (error) {
+    console.error(`❌ Failed to download video from ${url}:`, error);
     return null;
   }
 }
@@ -38,7 +34,7 @@ async function downloadVideo(url: string): Promise<Buffer | null> {
 export async function syncNotionToLocalDB() {
   const db = await getDBConnection();
 
-  console.log("Ensuring database schema is correct...");
+  console.log("🔄 Ensuring database schema is correct...");
   await db.exec(`
     CREATE TABLE IF NOT EXISTS exercises (
       id TEXT PRIMARY KEY,
@@ -49,17 +45,17 @@ export async function syncNotionToLocalDB() {
     );
   `);
 
-  console.log("Database schema verified.");
-  
+  console.log("✅ Database schema verified.");
+
   const exercises = await fetchExercisesFromNotion();
 
   for (const exercise of exercises) {
     const videoBuffer = exercise.video ? await downloadVideo(exercise.video) : null;
 
     if (videoBuffer) {
-      console.log(`Storing video for exercise ${exercise.id} (${videoBuffer.length} bytes)`);
+      console.log(`📝 Storing video for exercise ${exercise.id} (${videoBuffer.length} bytes)`);
     } else {
-      console.warn(`No video stored for exercise ${exercise.id}`);
+      console.warn(`⚠️ No video stored for exercise ${exercise.id}`);
     }
 
     await db.run(
@@ -69,6 +65,5 @@ export async function syncNotionToLocalDB() {
     );
   }
 
-  console.log("Exercises updated from Notion and stored in SQLite.");
+  console.log("✅ Exercises updated from Notion and stored in SQLite.");
 }
-

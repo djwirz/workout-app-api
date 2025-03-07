@@ -1,34 +1,54 @@
-import axios from "axios";
-import dotenv from "dotenv";
+import { getDBConnection } from "../db";
+import { fetchExercisesFromNotion } from "../services/notionService";
+import { downloadVideo } from "../services/syncService";
 
-dotenv.config();
+async function testVideoStorage() {
+  console.log("🔍 Fetching exercises from Notion...");
+  const exercises = await fetchExercisesFromNotion();
 
-const NOTION_API_URL = "https://api.notion.com/v1/databases";
-const NOTION_DATABASE_ID = process.env.NOTION_EXERCISE_DB_ID;
-const NOTION_API_KEY = process.env.NOTION_API_KEY;
+  const exerciseWithVideo = exercises.find((e: { video: any; }) => e.video);
+  if (!exerciseWithVideo) {
+    console.error("❌ No exercises with video found.");
+    return;
+  }
 
-async function testNotionApiResponse() {
-  try {
-    console.log("Fetching raw data from Notion API...");
+  console.log(`✅ Found exercise with video: ${exerciseWithVideo.name}`);
+  console.log(`📥 Downloading video from: ${exerciseWithVideo.video}`);
 
-    const response = await axios.post(
-      `${NOTION_API_URL}/${NOTION_DATABASE_ID}/query`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${NOTION_API_KEY}`,
-          "Notion-Version": "2022-06-28",
-          "Content-Type": "application/json",
-        },
-      }
-    );
+  const videoBuffer = await downloadVideo(exerciseWithVideo.video);
+  if (!videoBuffer) {
+    console.error("❌ Failed to download video.");
+    return;
+  }
 
-    console.log("✅ Full Notion API Response:");
-    console.dir(response.data, { depth: null });
+  console.log(`✅ Video downloaded (${videoBuffer.length} bytes)`);
 
-  } catch (error) {
-    console.error("❌ Error fetching from Notion API:", error);
+  // Store in SQLite
+  const db = await getDBConnection();
+  await db.run(
+    `INSERT OR REPLACE INTO exercises (id, name, "group", focus, video) VALUES (?, ?, ?, ?, ?)`,
+    [
+      exerciseWithVideo.id,
+      exerciseWithVideo.name,
+      exerciseWithVideo.group,
+      JSON.stringify(exerciseWithVideo.focus),
+      videoBuffer
+    ]
+  );
+
+  console.log(`✅ Video stored in SQLite for exercise ${exerciseWithVideo.id}`);
+
+  // Validate retrieval
+  const result = await db.get(
+    `SELECT id, name, length(video) as video_size FROM exercises WHERE id = ?`,
+    [exerciseWithVideo.id]
+  );
+
+  if (!result || result.video_size === 0) {
+    console.error("❌ Video storage validation failed. Data not found.");
+  } else {
+    console.log(`✅ Video successfully stored. Size: ${result.video_size} bytes`);
   }
 }
 
-testNotionApiResponse();
+testVideoStorage();
