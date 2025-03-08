@@ -9,12 +9,9 @@ dotenv.config();
 const fastify = Fastify({
   logger: {
     level: "warn", // Reduce unnecessary logging
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        enabled: process.env.NODE_ENV !== "production" // Pretty logs in dev
-      }
-    }
+    transport: process.env.NODE_ENV !== "production" 
+      ? { target: 'pino-pretty' }
+      : undefined
   },
 });
 
