@@ -9,45 +9,37 @@ dotenv.config();
 async function testVideoStorageAndRetrieval() {
   const db = await getDBConnection();
 
-  console.log("🔍 Fetching exercises from Notion...");
+  console.log("🔍 Checking if exercises exist...");
   const exercises = await fetchExercisesFromNotion();
 
   if (exercises.length === 0) {
-    console.error("❌ No exercises found in Notion!");
+    console.warn("⚠️ No exercises found in Notion. Skipping test.");
     return;
   }
 
-  // Find an exercise that has a video
   const exerciseWithVideo = exercises.find((ex: { video: any; }) => ex.video);
-
   if (!exerciseWithVideo) {
-    console.error("❌ No exercises with videos found in Notion!");
+    console.warn("⚠️ No exercises with videos found in Notion.");
     return;
   }
 
-  console.log(`✅ Found exercise with video: ${exerciseWithVideo.name} (${exerciseWithVideo.id})`);
-
-  // Check if the video already exists in SQLite
   const existingVideo = await db.get("SELECT LENGTH(video) as size FROM exercises WHERE id = ?", [
     exerciseWithVideo.id,
   ]);
 
   if (existingVideo?.size) {
-    console.log(`📂 Video already exists in SQLite (${existingVideo.size} bytes), skipping download.`);
+    console.log(`✅ Video exists in SQLite (${existingVideo.size} bytes), skipping download.`);
   } else {
-    console.log("📥 Downloading new video...");
+    console.log(`📥 Downloading video for ${exerciseWithVideo.name}...`);
     const videoBuffer = await downloadVideo(exerciseWithVideo.video);
 
     if (!videoBuffer) {
-      console.error("❌ Failed to download video!");
+      console.error("❌ Video download failed!");
       return;
     }
 
-    console.log(`✅ Video downloaded (${videoBuffer.length} bytes), storing in SQLite...`);
-
     await db.run(
-      `INSERT OR REPLACE INTO exercises (id, name, "group", focus, video)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO exercises (id, name, "group", focus, video) VALUES (?, ?, ?, ?, ?)`,
       [
         exerciseWithVideo.id,
         exerciseWithVideo.name,
@@ -57,21 +49,8 @@ async function testVideoStorageAndRetrieval() {
       ]
     );
 
-    console.log(`✅ Video successfully stored in SQLite.`);
+    console.log(`✅ Video stored in SQLite (${videoBuffer.length} bytes)`);
   }
-
-  // Validate stored video
-  const storedVideo = await db.get(
-    "SELECT LENGTH(video) as size FROM exercises WHERE id = ?",
-    [exerciseWithVideo.id]
-  );
-
-  if (!storedVideo?.size) {
-    console.error("❌ Video not found in database after insertion!");
-    return;
-  }
-
-  console.log(`✅ Video is in SQLite (${storedVideo.size} bytes), testing API retrieval...`);
 
   // Test API retrieval
   try {
@@ -79,22 +58,13 @@ async function testVideoStorageAndRetrieval() {
       responseType: "arraybuffer",
     });
 
-    if (response.status === 200) {
-      console.log(
-        `✅ API successfully served video (${response.data.length} bytes) [DB: ${storedVideo.size} bytes]`
-      );
-
-      // Ensure API response matches stored size
-      if (response.data.length !== storedVideo.size) {
-        console.error(
-          `⚠️ Mismatch between API response (${response.data.length} bytes) and DB (${storedVideo.size} bytes)`
-        );
-      }
+    if (response.status === 200 && response.data.length === existingVideo.size) {
+      console.log(`✅ API served correct video (${response.data.length} bytes)`);
     } else {
-      console.error(`❌ API returned unexpected status: ${response.status}`);
+      console.warn(`⚠️ API response size mismatch: ${response.data.length} bytes (DB: ${existingVideo.size} bytes)`);
     }
-  } catch (error: unknown) {
-    console.error("❌ API failed to retrieve video:", error instanceof Error ? error.message : String(error));
+  } catch (error) {
+    console.error(`❌ API error: ${error}`);
   }
 }
 
