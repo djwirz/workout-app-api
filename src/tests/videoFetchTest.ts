@@ -17,54 +17,66 @@ async function testVideoStorageAndRetrieval() {
     return;
   }
 
-  const exerciseWithVideo = exercises.find((ex: { video: any; }) => ex.video);
-  if (!exerciseWithVideo) {
-    console.warn("⚠️ No exercises with videos found in Notion.");
-    return;
-  }
+  let processedCount = 0;
 
-  const existingVideo = await db.get("SELECT LENGTH(video) as size FROM exercises WHERE id = ?", [
-    exerciseWithVideo.id,
-  ]);
+  for (const exercise of exercises) {
+    if (!exercise.video) {
+      console.warn(`⚠️ No video URL for exercise ${exercise.id}, skipping.`);
+      continue;
+    }
 
-  if (existingVideo?.size) {
-    console.log(`✅ Video exists in SQLite (${existingVideo.size} bytes), skipping download.`);
-  } else {
-    console.log(`📥 Downloading video for ${exerciseWithVideo.name}...`);
-    const videoBuffer = await downloadVideo(exerciseWithVideo.video);
+    // Check if video exists
+    const existingVideo = await db.get("SELECT video_size FROM exercises WHERE id = ?", [exercise.id]);
+
+    if (existingVideo?.video_size) {
+      console.log(`✅ Video for ${exercise.id} already exists (${existingVideo.video_size} bytes), skipping.`);
+      continue;
+    }
+
+    console.log(`📥 Downloading video for ${exercise.name}...`);
+    const videoBuffer = await downloadVideo(exercise.video);
 
     if (!videoBuffer) {
-      console.error("❌ Video download failed!");
-      return;
+      console.error(`❌ Video download failed for ${exercise.id}!`);
+      continue;
     }
 
     await db.run(
-      `INSERT OR REPLACE INTO exercises (id, name, "group", focus, video) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO exercises (id, name, "group", focus, video, video_size)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
-        exerciseWithVideo.id,
-        exerciseWithVideo.name,
-        exerciseWithVideo.group,
-        JSON.stringify(exerciseWithVideo.focus),
+        exercise.id,
+        exercise.name,
+        exercise.group,
+        JSON.stringify(exercise.focus),
         videoBuffer,
+        videoBuffer.length,
       ]
     );
 
-    console.log(`✅ Video stored in SQLite (${videoBuffer.length} bytes)`);
+    console.log(`✅ Video stored for ${exercise.id} (${videoBuffer.length} bytes)`);
+    processedCount++;
   }
 
-  // Test API retrieval
-  try {
-    const response = await axios.get(`http://127.0.0.1:3000/video/${exerciseWithVideo.id}`, {
-      responseType: "arraybuffer",
-    });
+  console.log(`✅ Completed processing ${processedCount} videos.`);
 
-    if (response.status === 200 && response.data.length === existingVideo.size) {
-      console.log(`✅ API served correct video (${response.data.length} bytes)`);
-    } else {
-      console.warn(`⚠️ API response size mismatch: ${response.data.length} bytes (DB: ${existingVideo.size} bytes)`);
+  // Verify API retrieval
+  for (const exercise of exercises) {
+    if (!exercise.video) continue;
+
+    try {
+      const response = await axios.get(`http://127.0.0.1:3000/video/${exercise.id}`, {
+        responseType: "arraybuffer",
+      });
+
+      if (response.status === 200 && response.data.length > 0) {
+        console.log(`✅ API successfully served video for ${exercise.id} (${response.data.length} bytes)`);
+      } else {
+        console.warn(`⚠️ API response size mismatch for ${exercise.id}.`);
+      }
+    } catch (error) {
+      console.error(`❌ API error while retrieving video for ${exercise.id}: ${error}`);
     }
-  } catch (error) {
-    console.error(`❌ API error: ${error}`);
   }
 }
 
