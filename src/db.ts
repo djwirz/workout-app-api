@@ -1,21 +1,24 @@
 import sqlite3 from "sqlite3";
-import { open } from "sqlite";
+import { open, Database } from "sqlite";
 import path from "path";
 
 const dbPath = path.resolve(__dirname, "../workout.db");
+let dbInstance: Database | null = null;
 
 /**
- * Initializes the SQLite database with the correct schema.
+ * Initializes the SQLite database and ensures all tables exist before API starts.
  */
 async function initializeDatabase() {
-  const db = await open({
+  if (dbInstance) return dbInstance; // Prevent reinitialization
+
+  dbInstance = await open({
     filename: dbPath,
     driver: sqlite3.Database,
   });
 
-  console.log("📦 Initializing database...");
+  console.log("🔧 Initializing database schema...");
 
-  await db.exec(`
+  await dbInstance.exec(`
     CREATE TABLE IF NOT EXISTS exercises (
       id TEXT PRIMARY KEY,
       name TEXT,
@@ -26,8 +29,8 @@ async function initializeDatabase() {
     );
   `);
 
-  console.log("✅ Database ready.");
-  return db;
+  console.log("✅ Database schema verified.");
+  return dbInstance;
 }
 
 export async function getDBConnection() {
