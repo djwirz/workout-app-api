@@ -7,17 +7,15 @@ export default async function videoRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const db = await getDBConnection();
 
-      const row = await db.get("SELECT video FROM exercises WHERE id = ?", [id]);
+      const row = await db.get("SELECT video, video_size FROM exercises WHERE id = ?", [id]);
 
       if (!row || !row.video) {
         fastify.log.warn(`❌ Video not found for ID: ${id}`);
         return reply.status(404).send({ error: "Video not found" });
       }
 
-      // Debug-level log only for troubleshooting
-      fastify.log.debug(`📂 Serving video for ${id} (${row.video.length} bytes)`);
-
       reply.header("Content-Type", "video/mp4");
+      reply.header("Content-Length", row.video_size);
       reply.send(row.video);
     } catch (error) {
       fastify.log.error(`❌ Error retrieving video: ${error}`);
