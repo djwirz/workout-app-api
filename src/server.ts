@@ -1,29 +1,27 @@
 import Fastify from "fastify";
 import dotenv from "dotenv";
-import pino from "pino";
 import exercisesRoutes from "./routes/exercises";
 import videoRoutes from "./routes/video";
 
 dotenv.config();
 
-// Correctly configure Pino logger
-const logger = pino({
-  level: process.env.LOG_LEVEL || "info",
-  transport:
-    process.env.NODE_ENV !== "production"
-      ? {
-          target: "pino-pretty",
-          options: {
-            colorize: true,
-            ignore: "pid,hostname",
-            translateTime: "HH:MM:ss Z",
-          },
-        }
-      : undefined, // Default JSON logging in production
+// Configure Fastify logger directly using an object
+const fastify = Fastify({
+  logger: {
+    level: process.env.LOG_LEVEL || "info",
+    transport:
+      process.env.NODE_ENV !== "production"
+        ? {
+            target: "pino-pretty",
+            options: {
+              colorize: true,
+              ignore: "pid,hostname",
+              translateTime: "HH:MM:ss Z",
+            },
+          }
+        : undefined, // Default JSON logging in production
+  },
 });
-
-// Ensure Pino is used properly in Fastify
-const fastify = Fastify({ logger });
 
 fastify.register(exercisesRoutes);
 fastify.register(videoRoutes);
