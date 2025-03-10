@@ -1,13 +1,14 @@
 import { FastifyInstance } from "fastify";
 import { getDBConnection } from "../db";
 
-export default async function videoRoutes(fastify: FastifyInstance) {
+export default function videoRoutes(fastify: FastifyInstance) {
   fastify.get("/video/:id", async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      const db = await getDBConnection();
+      const db = getDBConnection();
 
-      const row = await db.get("SELECT video, video_size FROM exercises WHERE id = ?", [id]);
+      // Fix: Properly type the query result
+      const row = db.prepare("SELECT video, video_size FROM exercises WHERE id = ?").get(id) as { video?: Buffer, video_size?: number } | undefined;
 
       if (!row || !row.video) {
         fastify.log.warn(`❌ Video not found for ID: ${id}`);
@@ -15,10 +16,10 @@ export default async function videoRoutes(fastify: FastifyInstance) {
       }
 
       reply.header("Content-Type", "video/mp4");
-      reply.header("Content-Length", row.video_size);
+      reply.header("Content-Length", row.video_size?.toString() || "0");
       reply.send(row.video);
     } catch (error) {
-      fastify.log.error(`❌ Error retrieving video: ${error}`);
+      fastify.log.error(`❌ Error retrieving video: ${(error as Error).message}`);
       reply.status(500).send({ error: "Internal Server Error" });
     }
   });
