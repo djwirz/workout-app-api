@@ -10,10 +10,10 @@ const logger = pino({
 });
 
 async function testVideoStorageAndRetrieval() {
-  const db = getDBConnection();
+  const db = await getDBConnection();
 
   logger.info("🔍 Fetching exercises from Notion...");
-  const exercises = await fetchExercisesFromNotion(); // FIX: Await the fetch
+  const exercises = await fetchExercisesFromNotion();
 
   if (exercises.length === 0) {
     logger.warn("⚠️ No exercises found in Notion. Skipping test.");
@@ -28,24 +28,25 @@ async function testVideoStorageAndRetrieval() {
       continue;
     }
 
-    // Fix: Properly type the result
-    const existingVideo = db.prepare("SELECT video_size FROM exercises WHERE id = ?").get(exercise.id) as { video_size?: number } | undefined;
+    // Check if video exists
+    const existingVideo = await db.get("SELECT video_size FROM exercises WHERE id = ?", [exercise.id]);
 
     if (existingVideo?.video_size) {
       logger.info(`✅ Video for ${exercise.id} already stored, skipping.`);
       continue;
     }
 
-    const videoBuffer = await downloadVideo(exercise.video); // FIX: Await the video download
+    const videoBuffer = await downloadVideo(exercise.video);
     if (!videoBuffer) {
       logger.error(`❌ Failed to download video for ${exercise.id}`);
       continue;
     }
 
-    db.prepare(
+    await db.run(
       `INSERT OR REPLACE INTO exercises (id, name, "group", video, video_size)
-       VALUES (?, ?, ?, ?, ?)`
-    ).run(exercise.id, exercise.name, exercise.group, videoBuffer, videoBuffer.length);
+       VALUES (?, ?, ?, ?, ?)`,
+      [exercise.id, exercise.name, exercise.group, videoBuffer, videoBuffer.length]
+    );
 
     logger.info(`✅ Stored video for ${exercise.id} (${videoBuffer.length} bytes)`);
     processedCount++;

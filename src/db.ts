@@ -1,16 +1,24 @@
-import Database from "better-sqlite3";
+import sqlite3 from "sqlite3";
+import { open, Database } from "sqlite";
 import path from "path";
 
 const dbPath = path.resolve(__dirname, "../workout.db");
-const db = new Database(dbPath, { verbose: console.log });
+let dbInstance: Database | null = null;
 
 /**
  * Initializes the SQLite database and ensures all tables exist before API starts.
  */
-export function initializeDatabase() {
+async function initializeDatabase() {
+  if (dbInstance) return dbInstance;
+
+  dbInstance = await open({
+    filename: dbPath,
+    driver: sqlite3.Database,
+  });
+
   console.log("🔧 Initializing database schema...");
 
-  db.exec(`
+  await dbInstance.exec(`
     CREATE TABLE IF NOT EXISTS exercises (
       id TEXT PRIMARY KEY,
       name TEXT,
@@ -23,11 +31,9 @@ export function initializeDatabase() {
   `);
 
   console.log("✅ Database schema verified.");
+  return dbInstance;
 }
 
-export function getDBConnection() {
-  return db;
+export async function getDBConnection() {
+  return initializeDatabase();
 }
-
-// Initialize the DB schema when the module is loaded
-initializeDatabase();
