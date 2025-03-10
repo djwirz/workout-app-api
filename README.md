@@ -6,7 +6,7 @@ A lightweight Fastify-based API designed to **sync, store, and retrieve workout 
 
 ## Features
 
-✅ **Sync exercises** from Notion  
+✅ **Manually sync exercises** from Notion  
 ✅ **Cache exercise videos** in SQLite  
 ✅ **Serve video data efficiently**  
 ✅ **Paginated exercise retrieval**
@@ -49,13 +49,14 @@ A lightweight Fastify-based API designed to **sync, store, and retrieve workout 
 
 ## Endpoints
 
-### **1. Get Exercises**
+### **1. Get Exercises (Paginated)**
 
 ```
 GET /exercises?limit=10&offset=0
 ```
 
 - Returns a paginated list of exercises.
+- Does **not** trigger a Notion sync; it only returns stored data.
 
 ### **2. Get Exercise Video**
 
@@ -65,21 +66,24 @@ GET /video/:id
 
 - Returns the **cached video** for the given `id`.
 
-## Testing
+### **3. Sync Exercises from Notion**
 
-Run video caching test:
-
-```sh
-npm run test-video
 ```
+POST /sync
+```
+
+- Manually triggers a sync with Notion.
+- Fetches exercises and caches their videos in the database.
+- Should be called **only when new data is needed** to avoid unnecessary API requests.
 
 ## Logging
 
 This API uses **Pino logging** for structured output. Logs include:
 
-- Incoming API requests
+- Incoming API requests & responses
+- Notion API interactions
+- Exercise and video storage operations
 - Errors & warnings
-- Sync operations with Notion
 
 ## Next Steps
 
