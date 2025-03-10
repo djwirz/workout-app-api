@@ -14,6 +14,7 @@ export default async function videoRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: "Video not found" });
       }
 
+      fastify.log.info(`✅ Serving video for exercise ID: ${id} (Size: ${row.video_size} bytes)`);
       reply.header("Content-Type", "video/mp4");
       reply.header("Content-Length", row.video_size);
       reply.send(row.video);
