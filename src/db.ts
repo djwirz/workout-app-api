@@ -19,27 +19,45 @@ async function initializeDatabase() {
   console.log("🔧 Checking database schema...");
 
   // Ensure exercises table exists
-  const tableCheck = await dbInstance.get(`
-    SELECT name FROM sqlite_master WHERE type='table' AND name='exercises';
+  await dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS exercises (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      "group" TEXT,
+      video BLOB,
+      video_size INTEGER,
+      last_updated INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_exercise_id ON exercises(id);
   `);
 
-  if (!tableCheck) {
-    console.log("⚠️ No 'exercises' table found, creating schema...");
-    await dbInstance.exec(`
-      CREATE TABLE exercises (
-        id TEXT PRIMARY KEY,
-        name TEXT,
-        "group" TEXT,
-        video BLOB,
-        video_size INTEGER,
-        last_updated INTEGER
-      );
-      CREATE INDEX idx_exercise_id ON exercises(id);
-    `);
-  } else {
-    console.log("✅ Database schema already exists.");
-  }
+  // Ensure workouts table exists
+  await dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS workouts (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      date TEXT,  -- YYYY-MM-DD format
+      last_updated INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_workout_id ON workouts(id);
+  `);
 
+  // Ensure workout_entries table exists
+  await dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS workout_entries (
+      id TEXT PRIMARY KEY,
+      workout_id TEXT REFERENCES workouts(id) ON DELETE CASCADE,
+      exercise_id TEXT REFERENCES exercises(id),
+      sets INTEGER,
+      reps INTEGER,
+      weight INTEGER,
+      rest_time INTEGER,
+      last_updated INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_workout_entry_id ON workout_entries(id);
+  `);
+
+  console.log("✅ Database schema ready.");
   return dbInstance;
 }
 

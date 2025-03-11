@@ -5,6 +5,7 @@ import pino from "pino";
 import exercisesRoutes from "./routes/exercises";
 import videoRoutes from "./routes/video";
 import syncRoutes from "./routes/sync";
+import workoutsRoutes from "./routes/workouts";
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ fastify.register(cors, {
 fastify.register(exercisesRoutes);
 fastify.register(videoRoutes);
 fastify.register(syncRoutes);
+fastify.register(workoutsRoutes);
 
 fastify.addHook("onRequest", (request, reply, done) => {
   request.log.info({ method: request.method, url: request.url }, "📩 Incoming Request");
