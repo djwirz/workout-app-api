@@ -2,10 +2,10 @@ import Fastify from "fastify";
 import cors from "@fastify/cors"; // ✅ Import CORS plugin
 import dotenv from "dotenv";
 import pino from "pino";
-import exercisesRoutes from "./routes/exercises";
-import videoRoutes from "./routes/video";
-import syncRoutes from "./routes/sync";
-import workoutsRoutes from "./routes/workouts";
+import exercisesRoutes from "./controllers/exercisesController";
+import videoRoutes from "./controllers/videoController";
+import syncRoutes from "./controllers/syncController";
+import workoutsRoutes from "./controllers/workoutsController";
 
 dotenv.config();
 
