@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import cors from "@fastify/cors"; // ✅ Import CORS plugin
 import dotenv from "dotenv";
 import pino from "pino";
 import exercisesRoutes from "./routes/exercises";
@@ -24,9 +25,16 @@ const logger = pino({
 
 const fastify = Fastify({ logger: true });
 
+// ✅ Register CORS middleware
+fastify.register(cors, {
+  origin: "*", // Allow all origins (for development)
+  methods: ["GET", "POST"], // Allow GET & POST requests
+  allowedHeaders: ["Content-Type"], // Allow specific headers
+});
+
 fastify.register(exercisesRoutes);
 fastify.register(videoRoutes);
-fastify.register(syncRoutes); // ✅ New sync route
+fastify.register(syncRoutes);
 
 fastify.addHook("onRequest", (request, reply, done) => {
   request.log.info({ method: request.method, url: request.url }, "📩 Incoming Request");
