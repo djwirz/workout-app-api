@@ -1,6 +1,6 @@
 import { getDBConnection } from "../../db";
 import pino from "pino";
-import { fetchWorkoutsFromNotion } from "../notion/notionWokrouts";
+import { fetchWorkoutsFromNotion } from "../notion/notionWorkouts";
 
 const logger = pino({ level: "info", transport: { target: "pino-pretty", options: { colorize: true } } });
 
