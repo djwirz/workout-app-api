@@ -1,5 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { getDBConnection } from "../db";
+import { syncWorkoutsToLocalDB } from "../services/sync/syncWorkouts";
+import { syncWorkoutEntriesToLocalDB } from "../services/sync/syncWorkoutEntries";
 
 export default async function workoutsRoutes(fastify: FastifyInstance) {
   
@@ -68,4 +70,27 @@ export default async function workoutsRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // **New: Trigger manual sync for workouts**
+  fastify.post("/sync-workouts", async (request, reply) => {
+    try {
+      fastify.log.info("🔄 Syncing workouts...");
+      await syncWorkoutsToLocalDB();
+      reply.send({ message: "Workouts synced successfully" });
+    } catch (error) {
+      fastify.log.error("❌ Error during workout sync:", error);
+      reply.status(500).send({ error: "Sync failed" });
+    }
+  });
+
+  // **New: Trigger manual sync for workout entries**
+  fastify.post("/sync-workout-entries", async (request, reply) => {
+    try {
+      fastify.log.info("🔄 Syncing workout entries...");
+      await syncWorkoutEntriesToLocalDB();
+      reply.send({ message: "Workout entries synced successfully" });
+    } catch (error) {
+      fastify.log.error("❌ Error during workout entries sync:", error);
+      reply.status(500).send({ error: "Sync failed" });
+    }
+  });
 }
