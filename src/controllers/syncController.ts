@@ -1,20 +1,25 @@
 import { FastifyInstance } from "fastify";
-import { syncExercisesToLocalDB } from "../services/sync/syncExercises";
-import { ExerciseRepository } from "../repositories/ExerciseRepository";
+import { syncWorkoutEntriesToLocalDB } from "../services/sync/syncWorkoutEntries";
+import { syncWorkoutTemplateEntriesToLocalDB } from "../services/sync/syncWorkoutTemplateEntries";
+import { getDBConnection } from "../db";
+import { syncExercises, syncWorkouts } from "../services/sync/syncService";
 
 export default async function syncRoutes(fastify: FastifyInstance) {
   fastify.post("/sync", async (request, reply) => {
-    try {
-      fastify.log.info("🔄 Syncing exercises...");
-      await syncExercisesToLocalDB();
+    const { type } = request.query as { type?: string };
 
-      const repo = new ExerciseRepository();
-      const exercises = await repo.getAllExercises();
+    if (!type || type.includes("exercises")) await syncExercises();
+    if (!type || type.includes("workouts")) await syncWorkouts();
+    if (!type || type.includes("workout-entries")) await syncWorkoutEntriesToLocalDB();
+    if (!type || type.includes("workout-template-entries")) await syncWorkoutTemplateEntriesToLocalDB();
+    if (!type || type.includes("workout-templates")) await syncWorkoutTemplateEntriesToLocalDB();
 
-      return reply.send({ exercises });
-    } catch (error) {
-      fastify.log.error("❌ Error during sync:", error);
-      reply.status(500).send({ error: "Sync failed" });
-    }
+    return reply.send({ message: "Sync completed" });
+  });
+
+  fastify.get("/sync/status", async (request, reply) => {
+    const db = await getDBConnection();
+    const syncTimes = await db.all("SELECT * FROM sync_state");
+    return reply.send(syncTimes);
   });
 }
