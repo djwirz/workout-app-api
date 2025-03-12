@@ -8,71 +8,27 @@ const NOTION_DATABASE_ID = process.env.NOTION_EXERCISE_DB_ID;
 const NOTION_API_KEY = process.env.NOTION_API_KEY;
 
 /**
- * Handles Notion API requests with automatic retry logic.
+ * Fetches exercises from Notion.
  */
-async function notionRequestWithRetry(url: string, data: any = {}) {
-  let attempts = 3;
-  while (attempts > 0) {
-    try {
-      const response = await axios.post(
-        url,
-        data,
-        {
-          headers: {
-            Authorization: `Bearer ${NOTION_API_KEY}`,
-            "Notion-Version": "2022-06-28",
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      return response.data;
-    } catch (error: any) {
-      if (attempts === 1 || error.response?.status !== 429) {
-        console.error(`Notion API request failed: ${error.message}`);
-        throw error;
-      }
-      console.warn(`Notion API rate limited, retrying...`);
-      await new Promise((res) => setTimeout(res, 1000)); // Wait 1s before retrying
+export async function fetchExercisesFromNotion() {
+  const response = await axios.post(
+    `${NOTION_API_URL}/${NOTION_DATABASE_ID}/query`,
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${NOTION_API_KEY}`,
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+      },
     }
-    attempts--;
-  }
+  );
+
+  return response.data.results
+    .map((page: any) => ({
+      id: page.id,
+      name: page.properties.Name.title[0].text.content,
+      group: page.properties.group?.select?.name || "Unknown",
+      video: page.properties.video?.files?.[0]?.file?.url || null,
+    }))
+    .filter(Boolean);
 }
-
-/**
- * Fetches exercises from Notion, extracting relevant properties.
- */
-export const fetchExercisesFromNotion = async () => {
-  try {
-    console.log("Fetching raw data from Notion API...");
-    const response = await axios.post(
-      `${NOTION_API_URL}/${NOTION_DATABASE_ID}/query`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${NOTION_API_KEY}`,
-          "Notion-Version": "2022-06-28",
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    return response.data.results
-      .map((page: any) => {
-        if (!page.id || !page.properties?.Name?.title?.[0]?.text?.content) {
-          console.warn(`⚠️ Skipping invalid Notion entry: ${JSON.stringify(page)}`);
-          return null;
-        }
-
-        return {
-          id: page.id,
-          name: page.properties.Name.title[0].text.content,
-          group: page.properties.group?.select?.name || "Unknown",
-          video: page.properties.video?.files?.[0]?.file?.url || null,
-        };
-      })
-      .filter(Boolean);
-  } catch (error) {
-    console.error("❌ Error fetching exercises from Notion:", error);
-    return [];
-  }
-};
