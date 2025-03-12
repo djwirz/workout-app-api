@@ -7,10 +7,20 @@ const NOTION_API_URL = "https://api.notion.com/v1/databases";
 const NOTION_DATABASE_ID = process.env.NOTION_WORKOUT_DB_ID;
 const NOTION_API_KEY = process.env.NOTION_API_KEY;
 
+/**
+ * Fetches workouts from Notion, filtering only "Planned" workouts.
+ */
 export async function fetchWorkoutsFromNotion() {
   const response = await axios.post(
     `${NOTION_API_URL}/${NOTION_DATABASE_ID}/query`,
-    {},
+    {
+      filter: {
+        property: "status",
+        status: {
+          equals: "Planned",
+        },
+      },
+    },
     {
       headers: {
         Authorization: `Bearer ${NOTION_API_KEY}`,
@@ -20,11 +30,11 @@ export async function fetchWorkoutsFromNotion() {
     }
   );
 
-  return response.data.results
-    .map((page: any) => ({
+  return response.data.results.map((page: any) => {
+    return {
       id: page.id,
-      name: page.properties.Name.title[0].text.content,
-      date: page.properties.Date.date.start,
-    }))
-    .filter(Boolean);
+      name: page.properties.Name?.title?.[0]?.text?.content || "Unnamed Workout",
+      date: page.properties["Workout Date"]?.date?.start || null,
+    };
+  });
 }
